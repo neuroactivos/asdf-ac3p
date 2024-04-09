@@ -8,14 +8,14 @@ case "$OS" in
 esac
 
 RELEASE="${ASDF_INSTALL_VERSION}"
-ASSET_NAME="acpp.$os.x86_64.bin"
+ASSET_NAME="ac3p.$os.x86_64.bin"
 INSTALL_PATH="$ASDF_INSTALL_PATH/bin"
 
 export ASSET_RELEASE="$RELEASE"
 
 export PAT="${PAT:-""}"
 export OWNER='neuroactivos'
-export REPO='acpp-workspace'
+export REPO='ac3p-workspace'
 
 if test -n "$PAT"
 then
