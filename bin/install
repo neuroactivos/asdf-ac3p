@@ -1,0 +1,97 @@
+#!/bin/bash
+
+OS="$(uname -s)"
+case "$OS" in
+    Linux*)     os="linux";;
+    Darwin*)    os="darwin";;
+    *)          echo "Unsupported os: $OS"; exit 1;;
+esac
+
+RELEASE="${ASDF_INSTALL_VERSION}"
+ASSET_NAME="acpp.$os.x86_64.bin"
+INSTALL_PATH="$ASDF_INSTALL_PATH/bin"
+
+export ASSET_RELEASE="$RELEASE"
+
+export PAT="${PAT:-""}"
+export OWNER='neuroactivos'
+export REPO='acpp-workspace'
+
+if test -n "$PAT"
+then
+	export PAT_HEADER='-H "Authorization: token '"$PAT"'"'
+fi
+
+RELEASES_BASE_URL="https://api.github.com/repos/$OWNER/$REPO/releases"
+
+if test -z "$ASSET_RELEASE"
+then
+	export R_T="latest"
+	# Get the latest release tag
+	R_REL="$(curl -s $PAT_HEADER \
+	     -H "Accept: application/vnd.github.v3+json" \
+	     "$RELEASES_BASE_URL/${R_T}" | jq -r '"\(.id) \(.tag_name)"')"
+
+else
+	R_T="$ASSET_RELEASE"
+	# Get the release tag
+	R_REL="$(curl -s $PAT_HEADER \
+	     -H "Accept: application/vnd.github.v3+json" \
+	     "$RELEASES_BASE_URL/tags/${R_T}" | jq -r '"\(.id) \(.tag_name)"')"
+fi
+
+
+if test -z "$R_REL"
+then
+	echo "ERROR: failed to get release data" 1>&2
+	exit 1
+fi
+
+R_TAG="${R_REL##* }"
+R_ID="${R_REL%% *}"
+
+if test -z "$R_TAG"
+then
+	echo "ERROR: failed to get the release tag" 1>&2
+	exit 1
+fi
+
+if test -z "$R_ID"
+then
+	echo "ERROR: failed to get the release id" 1>&2
+	exit 1
+fi
+
+#echo "using release tag $R_TAG"
+#echo "latest release tag $R_TAG has id $R_ID"
+
+TARGET_DIR="$INSTALL_PATH" 
+mkdir -p "$TARGET_DIR/"
+
+export ARTIFACT_NAME="$ASSET_NAME"
+export OUTPUT_FILENAME="$TARGET_DIR/ac3p"
+
+export ASSET_DOWNLOAD_URL="$RELEASES_BASE_URL/$R_ID/assets"
+
+#echo "downloading asset $ARTIFACT_NAME data for $R_TAG from $ASSET_DOWNLOAD_URL"
+
+# Download the asset info
+ASSET_ID="$(curl -s -L $PAT_HEADER -H "Accept: application/vnd.github+json" \
+	"$ASSET_DOWNLOAD_URL" | jq -r --arg NAME "$ARTIFACT_NAME" '.[] | select(.name == $NAME) | .id')"
+
+if test -z "$ASSET_ID"
+then
+        echo "ERROR: failed to get the asset id from the release asset data" 1>&2
+        exit 1
+fi
+
+export ASSET_DOWNLOAD_URL="$RELEASES_BASE_URL/assets/$ASSET_ID"
+
+#echo "downloading $ARTIFACT_NAME from $ASSET_DOWNLOAD_URL"
+echo "installing asset $ARTIFACT_NAME from release $R_TAG into $OUTPUT_FILENAME"
+
+# Download the asset info
+curl -s -S -L $PAT_HEADER -H "Accept: application/octet-stream" \
+     -o "$OUTPUT_FILENAME" \
+     "$ASSET_DOWNLOAD_URL" && chmod +x "$OUTPUT_FILENAME"
+

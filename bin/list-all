@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+REPO_URL="https://api.github.com/repos/neuroactivos/acpp-workspace/releases"
+
+curl -s "$REPO_URL" | jq -r '.[].tag_name' | sort -V | tr '\n' ' '
+echo
+
