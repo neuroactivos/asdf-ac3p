@@ -2,6 +2,6 @@
 
 REPO_URL="https://api.github.com/repos/neuroactivos/ac3p-workspace/releases"
 
-curl -s "$REPO_URL" | jq -r '.[].tag_name' | sort -V | tr '\n' ' '
+curl -s "$REPO_URL" | jq -r '.[].tag_name' | grep -v '^v' | sort -V | tr '\n' ' '
 echo
 
