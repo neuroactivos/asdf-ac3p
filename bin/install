@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -o errexit
-#set -o nounset
+set -o nounset
 set -o pipefail
 
 OS="$(uname -s)"
@@ -24,10 +24,10 @@ error_exit() {
   exit "${2:-1}"
 }
 
-if [ -z "$PAT" ]; then
-    PAT_HEADER=""
-else
-    PAT_HEADER="-H \"Authorization: token $PAT\""
+PAT="${PAT:-}" # Ensure PAT is initialized
+HEADER_ARGS=()
+if [ -n "$PAT" ]; then
+    HEADER_ARGS+=("-H" "Authorization: token $PAT")
 fi
 
 OWNER='neuroactivos'
@@ -36,7 +36,7 @@ RELEASES_BASE_URL="https://api.github.com/repos/$OWNER/$REPO/releases"
 
 R_T="${RELEASE:-latest}"
 RELEASE_INFO_URL="$RELEASES_BASE_URL/${R_T/tags\//}"
-RELEASE_DATA=$(curl -s $PAT_HEADER -H "Accept: application/vnd.github.v3+json" "$RELEASE_INFO_URL")
+RELEASE_DATA=$(curl -s "${HEADER_ARGS[@]}" -H "Accept: application/vnd.github.v3+json" "$RELEASE_INFO_URL")
 
 R_ID=$(echo "$RELEASE_DATA" | jq -r '.id')
 R_TAG=$(echo "$RELEASE_DATA" | jq -r '.tag_name')
@@ -48,7 +48,7 @@ fi
 mkdir -p "$INSTALL_PATH"
 
 ASSET_DOWNLOAD_URL="$RELEASES_BASE_URL/$R_ID/assets"
-ASSET_ID=$(curl -s -L $PAT_HEADER -H "Accept: application/vnd.github+json" \
+ASSET_ID=$(curl -s -L "${HEADER_ARGS[@]}" -H "Accept: application/vnd.github+json" \
             "$ASSET_DOWNLOAD_URL" | jq -r --arg NAME "$ASSET_NAME" '.[] | select(.name == $NAME) | .id')
 
 if [ -z "$ASSET_ID" ]; then
@@ -59,7 +59,7 @@ ASSET_DOWNLOAD_URL="$RELEASES_BASE_URL/assets/$ASSET_ID"
 
 echo "Installing asset $ASSET_NAME from release $R_TAG into $INSTALL_PATH/$ASSET_NAME"
 
-if curl -s -S -L $PAT_HEADER -H "Accept: application/octet-stream" \
+if curl -s -S -L "${HEADER_ARGS[@]}" -H "Accept: application/octet-stream" \
      -o "$TEMP_FILE" \
      "$ASSET_DOWNLOAD_URL"; then
     mv "$TEMP_FILE" "$INSTALL_PATH/$ASSET_NAME"
